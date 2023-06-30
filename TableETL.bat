@@ -1,1 +1,1 @@
-python TableETL.py 2> SchoolForceAPI_FullCMORoster.errlog
+python TableETL.py 2> TableETL_errors.log
