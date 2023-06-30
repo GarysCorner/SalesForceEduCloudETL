@@ -1,9 +1,11 @@
 
---create view [dbo].[view_SalesForceEduCloud_CMORoster] as
+--alter view [dbo].[view_SalesForceEduCloud_CMORoster] as
 
 
 select --top 100
-	
+	acc.Id as [StudentSalesForceId],
+	c.Id as [ContactSalesForceId],
+	a.Id as [EnrollmentSalesForceId],
 	a.[Name],
 	a.[Active__c],
 	a.[CreatedDate],
