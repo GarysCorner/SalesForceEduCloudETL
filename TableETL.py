@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# In[ ]:
+# In[2]:
 
 
 logfile = open("TableETL.log","w")
@@ -31,7 +31,7 @@ def lprint(val):
 lprint("Started...")
 
 
-# In[ ]:
+# In[3]:
 
 
 sfusername = environ.get('sfusername')
@@ -41,14 +41,14 @@ sfinstanceurl = environ.get("sfinstanceurl")
 connstr = environ.get("connstr")
 
 
-# In[ ]:
+# In[4]:
 
 
 lprint("Creating engine for %s" % connstr)
 engine = sa.create_engine(connstr)
 
 
-# In[3]:
+# In[5]:
 
 
 desiredTables = [
@@ -58,7 +58,7 @@ desiredTables = [
 ]
 
 
-# In[4]:
+# In[6]:
 
 
 soqlFilters = defaultdict(lambda: "where IsDeleted = false", {
@@ -178,7 +178,7 @@ for tbl in dataFrames.keys():
             metaData[tbl][col]['length'] = maxLen
 
 
-# In[14]:
+# In[39]:
 
 
 staticFields = {
@@ -214,16 +214,20 @@ def getSQLTypes(tbl):
             
             if fieldLen <= 255:
                 sqlTypes[field] = sa.NVARCHAR(fieldLen)
+            
+            #this is a fix they set some of the custom field max values to weird stuff
+            elif np.count_nonzero(~pd.isna(dataFrames[tbl][field])) > 0                             and ( fieldLen := int(dataFrames[tbl][field].str.len().max())) <= 255:
+                sqlTypes[field] = sa.NVARCHAR(fieldLen)                
                 
             else:
                 sqlTypes[field] = sa.TEXT()
             
     return sqlTypes
             
-#etSQLTypes('AcademicTermEnrollment')
+#getSQLTypes('AcademicTermEnrollment')
 
 
-# In[15]:
+# In[31]:
 
 
 for tbl in desiredTables:
