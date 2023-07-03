@@ -52,6 +52,8 @@ engine = sa.create_engine(connstr)
 
 
 desiredTables = [
+    'ContactContactRelation',
+    'AccountContactRelation',
     'AcademicTermEnrollment',
     'Account',
     'Contact'
@@ -178,7 +180,7 @@ for tbl in dataFrames.keys():
             metaData[tbl][col]['length'] = maxLen
 
 
-# In[39]:
+# In[14]:
 
 
 staticFields = {
@@ -227,7 +229,7 @@ def getSQLTypes(tbl):
 #getSQLTypes('AcademicTermEnrollment')
 
 
-# In[31]:
+# In[15]:
 
 
 for tbl in desiredTables:
@@ -239,12 +241,16 @@ for tbl in desiredTables:
     lprint("Finished uploading %s!" % tbl)
 
 
-# In[ ]:
+# In[20]:
 
 
 with engine.connect() as conn:
 
     for tbl in desiredTables:
+        
+        if dataFrames[tbl].shape[0] == 0:
+            lprint("Skipping %s no data!" % tbl)
+            continue
         
         sqlTypes = getSQLTypes(tbl)
         
@@ -257,19 +263,19 @@ with engine.connect() as conn:
         lprint("Finished uploading %s!" % tbl)
 
 
-# In[ ]:
+# In[17]:
 
 
 lprint("=============DONE!===================")
 
 
-# In[ ]:
+# In[18]:
 
 
 logfile.close()
 
 
-# In[ ]:
+# In[19]:
 
 
 print("Log file closed")
