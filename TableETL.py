@@ -52,8 +52,17 @@ engine = sa.create_engine(connstr)
 
 
 desiredTables = [
+    'School_Program__c',
+    'ConstituentRole',
+    'ContactProfile',
+    'Grade_Level__c',
+    'Address',
+    'AcademicTerm',
+    'AcademicYear',
+    'Display_School__c',
     'ContactContactRelation',
     'AccountContactRelation',
+    'AccountContactRole',
     'AcademicTermEnrollment',
     'Account',
     'Contact'
@@ -241,7 +250,7 @@ for tbl in desiredTables:
     lprint("Finished uploading %s!" % tbl)
 
 
-# In[20]:
+# In[16]:
 
 
 with engine.connect() as conn:
