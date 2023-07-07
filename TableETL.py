@@ -39,16 +39,25 @@ sfpassword = environ.get('sfpassword')
 sfsecret = environ.get("sfsecret")
 sfinstanceurl = environ.get("sfinstanceurl")
 connstr = environ.get("connstr")
+schema = environ.get("schema")
 
 
 # In[4]:
+
+
+if not schema:
+    lprint("Schema not set setting to [dbo]")
+    schema = 'dbo'
+
+
+# In[5]:
 
 
 lprint("Creating engine for %s" % connstr)
 engine = sa.create_engine(connstr)
 
 
-# In[5]:
+# In[6]:
 
 
 desiredTables = [
@@ -69,7 +78,7 @@ desiredTables = [
 ]
 
 
-# In[6]:
+# In[7]:
 
 
 soqlFilters = defaultdict(lambda: "where IsDeleted = false", {
@@ -77,7 +86,7 @@ soqlFilters = defaultdict(lambda: "where IsDeleted = false", {
 })
 
 
-# In[7]:
+# In[8]:
 
 
 lprint("Creating sessions...")
@@ -85,7 +94,7 @@ sf = Salesforce(username=sfusername, password=sfpassword, security_token=sfsecre
 lprint("Session created!")
 
 
-# In[8]:
+# In[9]:
 
 
 metaData = {}
@@ -108,7 +117,7 @@ for tbl in desiredTables:
     
 
 
-# In[9]:
+# In[10]:
 
 
 outputData = {}
@@ -130,14 +139,14 @@ for tbl in desiredTables:
     
 
 
-# In[10]:
+# In[11]:
 
 
 for tbl in outputData.keys():
     lprint("%s totalRecords %d" % (tbl, outputData[tbl]['totalSize']))
 
 
-# In[11]:
+# In[12]:
 
 
 lprint("Turning output data into dataframes")
@@ -154,7 +163,7 @@ for key in dataFrames.keys():
     lprint("%s shape %s" % (key, dataFrames[key].shape))
 
 
-# In[12]:
+# In[13]:
 
 
 for key in dataFrames.keys():
@@ -172,7 +181,7 @@ for key in dataFrames.keys():
     
 
 
-# In[13]:
+# In[14]:
 
 
 for tbl in dataFrames.keys():
@@ -189,7 +198,7 @@ for tbl in dataFrames.keys():
             metaData[tbl][col]['length'] = maxLen
 
 
-# In[14]:
+# In[15]:
 
 
 staticFields = {
@@ -227,7 +236,8 @@ def getSQLTypes(tbl):
                 sqlTypes[field] = sa.NVARCHAR(fieldLen)
             
             #this is a fix they set some of the custom field max values to weird stuff
-            elif np.count_nonzero(~pd.isna(dataFrames[tbl][field])) > 0                             and ( fieldLen := int(dataFrames[tbl][field].str.len().max())) <= 255:
+            elif np.count_nonzero(~pd.isna(dataFrames[tbl][field])) > 0 \
+                            and ( fieldLen := int(dataFrames[tbl][field].str.len().max())) <= 255:
                 sqlTypes[field] = sa.NVARCHAR(fieldLen)                
                 
             else:
@@ -238,7 +248,7 @@ def getSQLTypes(tbl):
 #getSQLTypes('AcademicTermEnrollment')
 
 
-# In[15]:
+# In[16]:
 
 
 for tbl in desiredTables:
@@ -250,7 +260,7 @@ for tbl in desiredTables:
     lprint("Finished uploading %s!" % tbl)
 
 
-# In[16]:
+# In[23]:
 
 
 with engine.connect() as conn:
@@ -267,24 +277,24 @@ with engine.connect() as conn:
         sqlTblName = "SalesForceEduCloud_%s" % tbl
         lprint("Uploading table %s to %s/%s" % (tbl, engine.url, sqlTblName))
         
-        dataFrames[tbl].to_sql(sqlTblName, conn, schema='dbo', if_exists='replace', index=False, dtype=sqlTypes)
+        dataFrames[tbl].to_sql(sqlTblName, conn, schema=schema, if_exists='replace', index=False, dtype=sqlTypes)
         
         lprint("Finished uploading %s!" % tbl)
 
 
-# In[17]:
+# In[ ]:
 
 
 lprint("=============DONE!===================")
 
 
-# In[18]:
+# In[ ]:
 
 
 logfile.close()
 
 
-# In[19]:
+# In[ ]:
 
 
 print("Log file closed")
