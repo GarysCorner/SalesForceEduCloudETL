@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[21]:
 
 
 import pandas as pd
@@ -9,12 +9,19 @@ import numpy as np
 import sqlalchemy as sa
 from datetime import datetime
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
+from json import JSONEncoder
 
 from simple_salesforce import Salesforce
 from os import environ
 from dotenv import load_dotenv
 load_dotenv()
+
+
+# In[ ]:
+
+
+
 
 
 # In[2]:
@@ -38,26 +45,18 @@ sfusername = environ.get('sfusername')
 sfpassword = environ.get('sfpassword')
 sfsecret = environ.get("sfsecret")
 sfinstanceurl = environ.get("sfinstanceurl")
-connstr = environ.get("connstr")
-schema = environ.get("schema")
+#connstr = environ.get("connstr")
+connstr = environ.get("KNOS_Datawarehouse")
 
 
 # In[4]:
 
 
-if not schema:
-    lprint("Schema not set setting to [dbo]")
-    schema = 'dbo'
+lprint("Creating engine")
+engine = sa.create_engine(connstr, fast_executemany=True)
 
 
-# In[5]:
-
-
-lprint("Creating engine for %s" % connstr)
-engine = sa.create_engine(connstr)
-
-
-# In[6]:
+# In[22]:
 
 
 desiredTables = [
@@ -78,7 +77,7 @@ desiredTables = [
 ]
 
 
-# In[7]:
+# In[6]:
 
 
 soqlFilters = defaultdict(lambda: "where IsDeleted = false", {
@@ -86,7 +85,7 @@ soqlFilters = defaultdict(lambda: "where IsDeleted = false", {
 })
 
 
-# In[8]:
+# In[7]:
 
 
 lprint("Creating sessions...")
@@ -94,7 +93,7 @@ sf = Salesforce(username=sfusername, password=sfpassword, security_token=sfsecre
 lprint("Session created!")
 
 
-# In[9]:
+# In[8]:
 
 
 metaData = {}
@@ -117,7 +116,7 @@ for tbl in desiredTables:
     
 
 
-# In[10]:
+# In[9]:
 
 
 outputData = {}
@@ -139,14 +138,14 @@ for tbl in desiredTables:
     
 
 
-# In[11]:
+# In[10]:
 
 
 for tbl in outputData.keys():
     lprint("%s totalRecords %d" % (tbl, outputData[tbl]['totalSize']))
 
 
-# In[12]:
+# In[11]:
 
 
 lprint("Turning output data into dataframes")
@@ -163,7 +162,7 @@ for key in dataFrames.keys():
     lprint("%s shape %s" % (key, dataFrames[key].shape))
 
 
-# In[13]:
+# In[12]:
 
 
 for key in dataFrames.keys():
@@ -181,21 +180,33 @@ for key in dataFrames.keys():
     
 
 
+# In[13]:
+
+
+jcoder = JSONEncoder()
+
+
 # In[14]:
 
 
 for tbl in dataFrames.keys():
     for col in dataFrames[tbl].columns:
         
-        if np.count_nonzero(dataFrames[tbl][col].map(type) == OrderedDict) > 0:
+        if np.count_nonzero(dataFrames[tbl][col].map(lambda a: isinstance(a, dict ) or isinstance(a, list ))) > 0:
             lprint("Ordered dict found in %s column %s converting..." % (tbl, col)) 
-            dataFrames[tbl][col] = dataFrames[tbl][col].astype(str)
             
-            maxLen = dataFrames[tbl][col].str.len().max()
+            dataFrames[tbl][col] = dataFrames[tbl][col].map(jcoder.encode)
             
-            lprint("Updating length for %s column %s to %d..." % (tbl, col, maxLen)) 
+            lprint("Updating type for %s column %s to JSON..." % (tbl, col)) 
+            metaData[tbl][col]['type'] = 'JSON'
             
-            metaData[tbl][col]['length'] = maxLen
+            fieldLen = int(dataFrames[tbl][col].str.len().max())
+            
+            lprint("Setting fieldlen to %d for %s" % (fieldLen, col))            
+            metaData[tbl][col]['length'] = int(dataFrames[tbl][col].str.len().max())
+            
+            
+            
 
 
 # In[15]:
@@ -213,9 +224,11 @@ staticFields = {
                  #'picklist',
                  #'reference',
                  #'string',
-                 'textarea':sa.TEXT
+                 'textarea':sa.TEXT,
+                 #'JSON':sa.JSON
 }
 
+#this is a mess
 def getSQLTypes(tbl):
     
     sqlTypes = {}
@@ -228,7 +241,8 @@ def getSQLTypes(tbl):
         
         if curMeta[field]['type'] in staticFields.keys():
             sqlTypes[field] = staticFields[curMeta[field]['type']]()
-            
+        
+        
         else:
             fieldLen = curMeta[field]['length']
             
@@ -236,8 +250,7 @@ def getSQLTypes(tbl):
                 sqlTypes[field] = sa.NVARCHAR(fieldLen)
             
             #this is a fix they set some of the custom field max values to weird stuff
-            elif np.count_nonzero(~pd.isna(dataFrames[tbl][field])) > 0 \
-                            and ( fieldLen := int(dataFrames[tbl][field].str.len().max())) <= 255:
+            elif np.count_nonzero(~pd.isna(dataFrames[tbl][field])) > 0                             and ( fieldLen := int(dataFrames[tbl][field].str.len().max())) <= 255:
                 sqlTypes[field] = sa.NVARCHAR(fieldLen)                
                 
             else:
@@ -257,10 +270,10 @@ for tbl in desiredTables:
 
     dataFrames[tbl].to_csv(csvTblName, index=False)
 
-    lprint("Finished uploading %s!" % tbl)
+    lprint("Finished saving %s!" % tbl)
 
 
-# In[23]:
+# In[20]:
 
 
 with engine.connect() as conn:
@@ -275,9 +288,9 @@ with engine.connect() as conn:
         
         
         sqlTblName = "SalesForceEduCloud_%s" % tbl
-        lprint("Uploading table %s to %s/%s" % (tbl, engine.url, sqlTblName))
+        lprint("Uploading table %s to %s" % (tbl,  sqlTblName))
         
-        dataFrames[tbl].to_sql(sqlTblName, conn, schema=schema, if_exists='replace', index=False, dtype=sqlTypes)
+        dataFrames[tbl].to_sql(sqlTblName, conn, schema='etl', if_exists='replace', index=False, dtype=sqlTypes, chunksize=1)
         
         lprint("Finished uploading %s!" % tbl)
 
