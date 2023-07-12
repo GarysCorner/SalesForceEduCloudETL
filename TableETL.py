@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[21]:
+# In[1]:
 
 
 import pandas as pd
@@ -56,7 +56,7 @@ lprint("Creating engine")
 engine = sa.create_engine(connstr, fast_executemany=True)
 
 
-# In[22]:
+# In[5]:
 
 
 desiredTables = [
@@ -75,6 +75,7 @@ desiredTables = [
     'Account',
     'Contact'
 ]
+#desiredTables = ['Contact']
 
 
 # In[6]:
@@ -195,7 +196,7 @@ for tbl in dataFrames.keys():
         if np.count_nonzero(dataFrames[tbl][col].map(lambda a: isinstance(a, dict ) or isinstance(a, list ))) > 0:
             lprint("Ordered dict found in %s column %s converting..." % (tbl, col)) 
             
-            dataFrames[tbl][col] = dataFrames[tbl][col].map(jcoder.encode)
+            dataFrames[tbl][col] = dataFrames[tbl][col].map(lambda v: jcoder.encode(v) if not pd.isna(v) else None)
             
             lprint("Updating type for %s column %s to JSON..." % (tbl, col)) 
             metaData[tbl][col]['type'] = 'JSON'
@@ -209,7 +210,7 @@ for tbl in dataFrames.keys():
             
 
 
-# In[15]:
+# In[18]:
 
 
 staticFields = {
@@ -258,7 +259,7 @@ def getSQLTypes(tbl):
             
     return sqlTypes
             
-#getSQLTypes('AcademicTermEnrollment')
+#getSQLTypes('Contact')
 
 
 # In[16]:
