@@ -56,8 +56,8 @@ lprint("Started...")
 handleThreadError_Super = threading.excepthook
 
 def handleThreadError(args):
-    handleThreadError_Super(args)
     lprint(f"ERROR!!! {args.exc_type} \"{args.exc_value}\" in thread {args.thread}  ERROR!!!")
+    handleThreadError_Super(args)
     
 threading.excepthook = handleThreadError
 
