@@ -1,1 +1,0 @@
-python TableETL.py 2> TableETL_errors.log
